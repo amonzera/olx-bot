@@ -1,0 +1,23 @@
+# Environment
+python-dotenv
+pydantic
+pydantic-settings
+
+# HTTP and Web Scraping
+curl_cffi
+beautifulsoup4
+
+# Database and ORM
+SQLAlchemy
+psycopg[binary]
+alembic
+
+# Task Queue and Caching
+celery
+redis
+
+# Telegram Bot
+aiogram
+
+# Tests and quality
+pytest

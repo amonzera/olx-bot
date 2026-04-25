@@ -1,0 +1,1 @@
+"""Local OLX monitor package."""

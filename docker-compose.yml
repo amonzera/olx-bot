@@ -1,0 +1,50 @@
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: olx-monitor-local:latest
+    container_name: olx_monitor_local
+    environment:
+      SQLITE_PATH: /app/data/olx_monitor.sqlite3
+      DEBUG_DUMP_DIR: /app/data/debug_dumps
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      MAX_LISTING_AGE_DAYS: ${MAX_LISTING_AGE_DAYS:-30}
+      DELAY_BETWEEN_REQUESTS_SECONDS: ${DELAY_BETWEEN_REQUESTS_SECONDS:-60}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-15}
+      REQUEST_RETRIES: ${REQUEST_RETRIES:-2}
+      REQUEST_BACKOFF_SECONDS: ${REQUEST_BACKOFF_SECONDS:-1.5}
+    volumes:
+      - .:/app
+      - olx_data:/app/data
+    command: ["python", "-m", "src.cli.run_once", "iphone 13", "--max-price", "2500", "--min-expected-price", "1500"]
+
+  postgres:
+    profiles: ["extras"]
+    image: postgres:15-alpine
+    container_name: olx_scrapper_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-olx_monitor}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    profiles: ["extras"]
+    image: redis:7-alpine
+    container_name: olx_scrapper_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  olx_data:
+  postgres_data:
+  redis_data:
