@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # Bot do Telegram
     TELEGRAM_BOT_TOKEN: str = Field(default="")
     TELEGRAM_CHAT_ID: str = Field(default="")
+    TELEGRAM_ALLOWED_CHAT_IDS: str = Field(default="")
 
     # Limites conservadores para reduzir risco de bloqueio pela OLX.
     SCAN_INTERVAL_SECONDS: int = Field(default=1800)
@@ -36,6 +37,15 @@ class Settings(BaseSettings):
     @property
     def debug_dump_dir(self) -> Path:
         return Path(self.DEBUG_DUMP_DIR)
+
+    @property
+    def allowed_chat_ids(self) -> set[str]:
+        raw_ids = self.TELEGRAM_ALLOWED_CHAT_IDS or self.TELEGRAM_CHAT_ID
+        return {
+            chat_id.strip()
+            for chat_id in raw_ids.split(",")
+            if chat_id.strip()
+        }
 
 # Instanciamos a classe de config. Assim podemos importar 'settings' em todo o código
 settings = Settings()

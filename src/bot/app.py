@@ -49,11 +49,13 @@ class AlertScheduler:
         repository: SQLiteRepository,
         scanner: ScanService,
         *,
+        allowed_chat_ids: set[str],
         interval_seconds: int,
         delay_between_alerts_seconds: int,
     ):
         self.repository = repository
         self.scanner = scanner
+        self.allowed_chat_ids = allowed_chat_ids
         self.interval_seconds = interval_seconds
         self.delay_between_alerts_seconds = delay_between_alerts_seconds
 
@@ -62,6 +64,13 @@ class AlertScheduler:
         while True:
             alerts = self.repository.list_active_alerts()
             for alert in alerts:
+                if not is_authorized_chat(alert.chat_id, self.allowed_chat_ids):
+                    logger.warning(
+                        "Skipping alert from unauthorized chat",
+                        extra={"alert_id": alert.id, "chat_id": alert.chat_id},
+                    )
+                    continue
+
                 try:
                     result = await self.scanner.scan_alert(alert.id)
                     if result is not None:
@@ -81,11 +90,18 @@ class AlertScheduler:
             await asyncio.sleep(self.interval_seconds)
 
 
-def build_router(repository: SQLiteRepository, scanner: ScanService) -> Router:
+def build_router(
+    repository: SQLiteRepository,
+    scanner: ScanService,
+    allowed_chat_ids: set[str],
+) -> Router:
     router = Router()
 
     @router.message(CommandStart())
     async def start(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         await message.answer(
             "Monitor local da OLX iniciado.\n\n"
             "Use /add para criar um alerta. A busca inicial acontece assim que o alerta é salvo.\n\n"
@@ -94,10 +110,16 @@ def build_router(repository: SQLiteRepository, scanner: ScanService) -> Router:
 
     @router.message(Command("help"))
     async def help_command(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         await message.answer(HELP_TEXT)
 
     @router.message(Command("add"))
     async def add_alert(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         try:
             draft = parse_alert_payload(command_payload(message.text))
         except ValueError as exc:
@@ -119,6 +141,9 @@ def build_router(repository: SQLiteRepository, scanner: ScanService) -> Router:
 
     @router.message(Command("list"))
     async def list_alerts(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         alerts = repository.list_alerts(str(message.chat.id))
         if not alerts:
             await message.answer("Você ainda não tem alertas. Use /add para criar o primeiro.")
@@ -128,6 +153,9 @@ def build_router(repository: SQLiteRepository, scanner: ScanService) -> Router:
 
     @router.message(Command("edit"))
     async def edit_alert(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         try:
             alert_id, draft = parse_edit_payload(command_payload(message.text))
         except ValueError as exc:
@@ -155,6 +183,9 @@ def build_router(repository: SQLiteRepository, scanner: ScanService) -> Router:
 
     @router.message(Command("delete"))
     async def delete_alert(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         try:
             alert_id = parse_alert_id(command_payload(message.text))
         except ValueError as exc:
@@ -169,13 +200,33 @@ def build_router(repository: SQLiteRepository, scanner: ScanService) -> Router:
 
     @router.message(Command("pause"))
     async def pause_alert(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         await set_alert_active(message, repository, active=False)
 
     @router.message(Command("resume"))
     async def resume_alert(message: Message) -> None:
+        if not is_authorized_message(message, allowed_chat_ids):
+            return
+
         await set_alert_active(message, repository, active=True)
 
     return router
+
+
+def is_authorized_chat(chat_id: object, allowed_chat_ids: set[str]) -> bool:
+    return str(chat_id) in allowed_chat_ids
+
+
+def is_authorized_message(message: Message, allowed_chat_ids: set[str]) -> bool:
+    authorized = is_authorized_chat(message.chat.id, allowed_chat_ids)
+    if not authorized:
+        logger.warning(
+            "Ignoring Telegram command from unauthorized chat",
+            extra={"chat_id": message.chat.id},
+        )
+    return authorized
 
 
 async def scan_and_report(message: Message, scanner: ScanService, alert_id: int) -> None:
@@ -217,6 +268,10 @@ async def main() -> None:
 
     if not settings.TELEGRAM_BOT_TOKEN:
         raise SystemExit("Configure TELEGRAM_BOT_TOKEN no .env antes de iniciar o bot.")
+    if not settings.allowed_chat_ids:
+        raise SystemExit(
+            "Configure TELEGRAM_ALLOWED_CHAT_IDS no .env com o seu chat_id antes de iniciar o bot."
+        )
 
     repository = SQLiteRepository(settings.sqlite_path)
     client = OLXClient()
@@ -232,13 +287,14 @@ async def main() -> None:
     scheduler = AlertScheduler(
         repository=repository,
         scanner=scanner,
+        allowed_chat_ids=settings.allowed_chat_ids,
         interval_seconds=settings.SCAN_INTERVAL_SECONDS,
         delay_between_alerts_seconds=settings.DELAY_BETWEEN_ALERT_REQUESTS_SECONDS,
     )
 
     bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
     dispatcher = Dispatcher()
-    dispatcher.include_router(build_router(repository, scanner))
+    dispatcher.include_router(build_router(repository, scanner, settings.allowed_chat_ids))
 
     scheduler_task = asyncio.create_task(scheduler.run_forever())
     try:

@@ -132,15 +132,29 @@ cp .env.example .env
 
 ```env
 TELEGRAM_BOT_TOKEN=cole_o_token_aqui
+TELEGRAM_ALLOWED_CHAT_IDS=cole_seu_chat_id_aqui
 ```
 
-O `TELEGRAM_CHAT_ID` é opcional. O bot usa o chat que enviou os comandos. Se você preencher `TELEGRAM_CHAT_ID`, ele também pode ser usado como fallback para notificações.
+`TELEGRAM_ALLOWED_CHAT_IDS` é obrigatório. O bot ignora qualquer comando vindo de chats que não estejam nessa lista. Para descobrir seu `chat_id`, envie uma mensagem qualquer para o bot e acesse:
+
+```bash
+curl "https://api.telegram.org/botSEU_TOKEN/getUpdates"
+```
+
+Procure o campo `message.chat.id` na resposta. Se quiser autorizar mais de um chat, separe os IDs por vírgula:
+
+```env
+TELEGRAM_ALLOWED_CHAT_IDS=123456789,987654321
+```
+
+O `TELEGRAM_CHAT_ID` é opcional e fica apenas como fallback para notificações. Para uso normal, preencha `TELEGRAM_ALLOWED_CHAT_IDS`.
 
 ## Variáveis Principais
 
 ```env
 SQLITE_PATH=olx_monitor.sqlite3
 TELEGRAM_BOT_TOKEN=
+TELEGRAM_ALLOWED_CHAT_IDS=
 TELEGRAM_CHAT_ID=
 
 SCAN_INTERVAL_SECONDS=1800
@@ -271,4 +285,3 @@ Os testes usam fixtures locais e não devem chamar a OLX.
 - O projeto continua sendo local e de usuário único.
 - Não há tentativa de resolver captcha, trocar proxy ou contornar bloqueio.
 - Só há duas localidades suportadas no comando: `brasil` e `rio de janeiro`.
-
