@@ -62,6 +62,7 @@ class AlertScheduler:
     async def run_forever(self) -> None:
         await asyncio.sleep(5)
         while True:
+            await self.delete_old_history()
             alerts = self.repository.list_active_alerts()
             for alert in alerts:
                 if not is_authorized_chat(alert.chat_id, self.allowed_chat_ids):
@@ -88,6 +89,20 @@ class AlertScheduler:
                 await asyncio.sleep(self.delay_between_alerts_seconds)
 
             await asyncio.sleep(self.interval_seconds)
+
+    async def delete_old_history(self) -> None:
+        result = await asyncio.to_thread(
+            self.repository.delete_old_history,
+            settings.DATA_RETENTION_DAYS,
+        )
+        if result.listings_deleted or result.notifications_deleted:
+            logger.info(
+                "Old database history deleted",
+                extra={
+                    "listings_deleted": result.listings_deleted,
+                    "notifications_deleted": result.notifications_deleted,
+                },
+            )
 
 
 def build_router(
@@ -274,6 +289,7 @@ async def main() -> None:
         )
 
     repository = SQLiteRepository(settings.sqlite_path)
+    repository.delete_old_history(settings.DATA_RETENTION_DAYS)
     client = OLXClient()
     scanner = ScanService(
         monitor=LocalMonitor(

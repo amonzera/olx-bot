@@ -20,6 +20,11 @@ def test_parse_relative_dates_with_fixed_today():
     assert parse_publication_date("ha 1 mes", today=today) == date(2026, 3, 26)
 
 
+def test_parse_unix_timestamp_dates_from_olx():
+    assert parse_publication_date("1776601424") == date(2026, 4, 19)
+    assert parse_publication_date(1777055881000) == date(2026, 4, 24)
+
+
 def test_recent_window():
     today = date(2026, 4, 25)
 

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     REQUEST_RETRIES: int = Field(default=2)
     REQUEST_BACKOFF_SECONDS: float = Field(default=1.5)
     MAX_LISTING_AGE_DAYS: int = Field(default=30)
+    DATA_RETENTION_DAYS: int = Field(default=30)
     DEBUG_DUMP_DIR: str = Field(default="debug_dumps")
 
     @property

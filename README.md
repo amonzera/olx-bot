@@ -166,6 +166,7 @@ REQUEST_TIMEOUT_SECONDS=15
 REQUEST_RETRIES=2
 REQUEST_BACKOFF_SECONDS=1.5
 MAX_LISTING_AGE_DAYS=30
+DATA_RETENTION_DAYS=30
 DEBUG_DUMP_DIR=debug_dumps
 ```
 
@@ -175,6 +176,7 @@ Recomendação:
 - `DELAY_BETWEEN_ALERT_REQUESTS_SECONDS=90`: pausa entre alertas.
 - `DELAY_BETWEEN_PAGE_REQUESTS_SECONDS=15`: pausa entre páginas do mesmo alerta.
 - `MAX_SEARCH_PAGES=3`: limite de páginas por alerta para reduzir volume.
+- `DATA_RETENTION_DAYS=30`: mantém histórico local de anúncios/notificações por 30 dias.
 
 Evite intervalos muito baixos. Quanto mais alertas e páginas, maior o risco de bloqueio pela OLX.
 
@@ -193,6 +195,23 @@ docker compose up
 ```
 
 O SQLite fica no volume Docker `olx-scrapper_olx_data`, dentro de `/app/data/olx_monitor.sqlite3` no container.
+
+Para consultar tabelas diretamente no volume:
+
+```bash
+docker compose exec monitor python -m sqlite3 /app/data/olx_monitor.sqlite3 "select name from sqlite_master where type='table';"
+docker compose exec monitor python -m sqlite3 /app/data/olx_monitor.sqlite3 "select * from alerts;"
+docker compose exec monitor python -m sqlite3 /app/data/olx_monitor.sqlite3 "select * from listings limit 20;"
+docker compose exec monitor python -m sqlite3 /app/data/olx_monitor.sqlite3 "select * from notifications limit 20;"
+```
+
+Para abrir em uma ferramenta visual sem mexer no volume, gere uma cópia consistente do banco no diretório do projeto:
+
+```bash
+docker compose exec monitor python -c "import sqlite3; src=sqlite3.connect('/app/data/olx_monitor.sqlite3'); dst=sqlite3.connect('/app/olx_monitor_snapshot.sqlite3'); src.backup(dst); dst.close(); src.close()"
+```
+
+Depois abra `olx_monitor_snapshot.sqlite3` no DB Browser for SQLite, DBeaver ou extensão SQLite do VS Code.
 
 Para parar:
 
@@ -229,6 +248,8 @@ O SQLite guarda:
 - `alerts`: alertas configurados pelo Telegram.
 - `listings`: anúncios vistos.
 - `notifications`: anúncios já enviados por alerta.
+
+O bot remove automaticamente `listings` e `notifications` mais antigos que `DATA_RETENTION_DAYS`. Os alertas em `alerts` não são apagados por essa limpeza, porque representam suas pesquisas agendadas.
 
 O banco local não deve entrar no Git. Arquivos `.sqlite3`, `.db`, `data/` e `debug_dumps/` já estão ignorados.
 

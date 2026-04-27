@@ -4,7 +4,7 @@ from src.bot.commands import normalize_location, parse_alert_id, parse_alert_pay
 
 
 def test_parse_alert_payload():
-    draft = parse_alert_payload("iphone 13 | rio de janeiro | 1500 | 2500")
+    draft = parse_alert_payload('"iphone 13" | rio de janeiro | 1500 | 2500')
 
     assert draft.search_term == "iphone 13"
     assert draft.location == "rio de janeiro"

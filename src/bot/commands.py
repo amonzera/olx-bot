@@ -30,6 +30,7 @@ def parse_alert_payload(payload: str) -> AlertDraft:
         )
 
     search_term, location_text, min_price_text, max_price_text = parts
+    search_term = normalize_search_term(search_term)
     if not search_term:
         raise ValueError("Informe o nome do produto.")
 
@@ -92,6 +93,10 @@ def normalize_location(value: str) -> str:
     if normalized not in aliases:
         raise ValueError("Localidade inválida. Use brasil ou rio de janeiro.")
     return aliases[normalized]
+
+
+def normalize_search_term(value: str) -> str:
+    return value.strip().strip("\"'").strip()
 
 
 def format_alert(alert: Alert) -> str:

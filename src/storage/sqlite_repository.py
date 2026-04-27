@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Iterable
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from src.core.models import Alert, AlertConfig, AnalysisResult, Listing
+
+
+@dataclass(slots=True)
+class CleanupResult:
+    listings_deleted: int
+    notifications_deleted: int
 
 
 class SQLiteRepository:
@@ -69,9 +76,16 @@ class SQLiteRepository:
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO listings (
+                INSERT INTO listings (
                     source, external_id, title, price_cents, url, published_at, raw_date, location
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source, external_id) DO UPDATE SET
+                    title = excluded.title,
+                    price_cents = excluded.price_cents,
+                    url = excluded.url,
+                    published_at = COALESCE(excluded.published_at, listings.published_at),
+                    raw_date = COALESCE(excluded.raw_date, listings.raw_date),
+                    location = COALESCE(excluded.location, listings.location)
                 """,
                 (
                     listing.source,
@@ -251,6 +265,44 @@ class SQLiteRepository:
                 """,
                 (alert_id,),
             )
+
+    def delete_old_history(
+        self,
+        retention_days: int,
+        *,
+        today: date | None = None,
+        now: datetime | None = None,
+    ) -> CleanupResult:
+        if retention_days < 0:
+            raise ValueError("retention_days precisa ser zero ou maior.")
+
+        today = today or date.today()
+        now = now or datetime.now()
+        cutoff_date = today - timedelta(days=retention_days)
+        cutoff_datetime = now - timedelta(days=retention_days)
+        cutoff_datetime_text = cutoff_datetime.isoformat(sep=" ", timespec="seconds")
+
+        with self._connect() as conn:
+            listings_cursor = conn.execute(
+                """
+                DELETE FROM listings
+                WHERE (published_at IS NOT NULL AND date(published_at) < date(?))
+                   OR (published_at IS NULL AND datetime(first_seen_at) < datetime(?))
+                """,
+                (cutoff_date.isoformat(), cutoff_datetime_text),
+            )
+            notifications_cursor = conn.execute(
+                """
+                DELETE FROM notifications
+                WHERE datetime(notified_at) < datetime(?)
+                """,
+                (cutoff_datetime_text,),
+            )
+
+        return CleanupResult(
+            listings_deleted=listings_cursor.rowcount,
+            notifications_deleted=notifications_cursor.rowcount,
+        )
 
     def _alert_key(self, alert: AlertConfig) -> str:
         if alert.alert_id is not None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 
 MONTHS = {
@@ -58,6 +58,10 @@ def parse_publication_date(value: object, today: date | None = None) -> date | N
     text = normalize_text(raw)
     text = re.sub(r"\s+", " ", text)
 
+    timestamp_date = _parse_unix_timestamp(text)
+    if timestamp_date is not None:
+        return timestamp_date
+
     if text in {"hoje", "publicado hoje"}:
         return today
     if text in {"ontem", "publicado ontem"}:
@@ -98,6 +102,20 @@ def parse_publication_date(value: object, today: date | None = None) -> date | N
         return parsed
 
     return None
+
+
+def _parse_unix_timestamp(value: str) -> date | None:
+    if not re.fullmatch(r"\d{10,13}", value):
+        return None
+
+    timestamp = int(value)
+    if len(value) == 13:
+        timestamp = timestamp // 1000
+
+    try:
+        return datetime.fromtimestamp(timestamp, tz=UTC).date()
+    except (OSError, OverflowError, ValueError):
+        return None
 
 
 def is_recent(published_at: date | None, max_age_days: int, today: date | None = None) -> bool:
