@@ -1,9 +1,10 @@
 # Notifier Context
 
-Notificadores devem receber `Listing` e `AnalysisResult`.
+Notificadores devem receber `AlertConfig`, `Listing` e `AnalysisResult`.
 
 Contrato:
-- Console e o fallback padrao.
-- Telegram e usado quando `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` existirem.
+- Telegram e a interface principal quando `TELEGRAM_BOT_TOKEN` existir.
+- O chat deve vir do alerta criado pelo bot; `TELEGRAM_CHAT_ID` e apenas fallback opcional.
+- Comandos esperados: `/start`, `/help`, `/add`, `/list`, `/edit`, `/delete`, `/pause`, `/resume`.
 - Mensagem deve mostrar titulo, preco, score, flags, motivos e link.
 - Nunca esconder flags de risco.

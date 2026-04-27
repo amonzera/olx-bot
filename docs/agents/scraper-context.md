@@ -10,3 +10,6 @@ Contrato:
 - Parser deve preferir JSON embutido em `__NEXT_DATA__`.
 - Se o HTML vier inesperado, salvar dump local em `debug_dumps/`.
 - Testes do scraper nao devem chamar rede real.
+- Localidades suportadas inicialmente: `brasil` e `rio de janeiro`.
+- Paginar com limite configuravel e pausas entre paginas; nao buscar volume ilimitado.
+- Nao implementar proxy rotativo, bypass de captcha, evasao de bloqueio ou contorno de robots/limites.

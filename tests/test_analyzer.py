@@ -67,3 +67,25 @@ def test_analyzer_does_not_notify_unknown_date_by_default():
 
     assert not result.should_notify
     assert AnalysisFlag.UNKNOWN_DATE in result.flags
+
+
+def test_analyzer_uses_minimum_price_as_range_filter():
+    analyzer = OpportunityAnalyzer()
+    listing = Listing(
+        external_id="444",
+        title="iPhone 13",
+        price_cents=100000,
+        url="https://example.test/444",
+        published_at=date(2026, 4, 25),
+    )
+    alert = AlertConfig(
+        search_term="iphone 13",
+        min_price_cents=150000,
+        max_price_cents=250000,
+        max_age_days=30,
+    )
+
+    result = analyzer.analyze(listing, alert, today=date(2026, 4, 25))
+
+    assert not result.should_notify
+    assert AnalysisFlag.GOOD_PRICE not in result.flags

@@ -11,4 +11,4 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "-m", "src.cli.run_once", "iphone 13", "--max-price", "2500", "--min-expected-price", "1500"]
+CMD ["python", "-m", "src.bot.app"]

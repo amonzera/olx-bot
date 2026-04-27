@@ -4,30 +4,25 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    # O pydantic puxa essas vars do seu `.env`
+    # O pydantic carrega essas variaveis do `.env`.
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8", 
-        extra="ignore" # ignora vars que não estao mapeadas
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # Persistencia local
     SQLITE_PATH: str = Field(default="olx_monitor.sqlite3")
 
-    # Banco de Dados legado/opcional
-    DATABASE_URL: str = Field(default="postgresql+psycopg://postgres:postgres@localhost:5432/olx_monitor")
-    
-    # Filas / Cache (Redis)
-    REDIS_URL: str = Field(default="redis://localhost:6379/0")
-    CELERY_BROKER_URL: str = Field(default="redis://localhost:6379/0")
-    CELERY_RESULT_BACKEND: str = Field(default="redis://localhost:6379/0")
-
     # Bot do Telegram
     TELEGRAM_BOT_TOKEN: str = Field(default="")
     TELEGRAM_CHAT_ID: str = Field(default="")
 
-    # Limites (Evitar ser bloqueado pela OLX)
-    DELAY_BETWEEN_REQUESTS_SECONDS: int = Field(default=5)
+    # Limites conservadores para reduzir risco de bloqueio pela OLX.
+    SCAN_INTERVAL_SECONDS: int = Field(default=1800)
+    DELAY_BETWEEN_ALERT_REQUESTS_SECONDS: int = Field(default=90)
+    DELAY_BETWEEN_PAGE_REQUESTS_SECONDS: int = Field(default=15)
+    MAX_SEARCH_PAGES: int = Field(default=3)
     REQUEST_TIMEOUT_SECONDS: int = Field(default=15)
     REQUEST_RETRIES: int = Field(default=2)
     REQUEST_BACKOFF_SECONDS: float = Field(default=1.5)

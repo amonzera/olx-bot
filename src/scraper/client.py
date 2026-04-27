@@ -9,8 +9,15 @@ from urllib.parse import urlencode
 from curl_cffi import requests
 
 from src.core.config import settings
+from src.core.models import SearchLocation
 
 logger = logging.getLogger(__name__)
+
+
+LOCATION_PATHS = {
+    SearchLocation.BRASIL.value: "brasil",
+    SearchLocation.RIO_DE_JANEIRO.value: "estado-rj",
+}
 
 
 class OLXClient:
@@ -30,16 +37,43 @@ class OLXClient:
             "Upgrade-Insecure-Requests": "1",
         }
 
-    def build_search_url(self, search_term: str, max_price: int | None = None) -> str:
+    def build_search_url(
+        self,
+        search_term: str,
+        *,
+        location: str = SearchLocation.BRASIL.value,
+        min_price: int | None = None,
+        max_price: int | None = None,
+        page: int = 1,
+    ) -> str:
         formatted_term = search_term.replace(" ", "-").lower()
         params = {"q": formatted_term}
+        if min_price:
+            params["ps"] = str(min_price)
         if max_price:
             params["pe"] = str(max_price)
-        return f"{self.base_url}/brasil?{urlencode(params)}"
+        if page > 1:
+            params["o"] = str(page)
+        path = LOCATION_PATHS.get(location, LOCATION_PATHS[SearchLocation.BRASIL.value])
+        return f"{self.base_url}/{path}?{urlencode(params)}"
 
-    def fetch_search_page(self, search_term: str, max_price: int | None = None) -> str | None:
+    def fetch_search_page(
+        self,
+        search_term: str,
+        *,
+        location: str = SearchLocation.BRASIL.value,
+        min_price: int | None = None,
+        max_price: int | None = None,
+        page: int = 1,
+    ) -> str | None:
         """Fetch a search page using only HTTP requests and a persistent session."""
-        url = self.build_search_url(search_term, max_price=max_price)
+        url = self.build_search_url(
+            search_term,
+            location=location,
+            min_price=min_price,
+            max_price=max_price,
+            page=page,
+        )
 
         for attempt in range(settings.REQUEST_RETRIES + 1):
             try:
@@ -58,7 +92,10 @@ class OLXClient:
                 )
                 self._dump_debug_html(response.text, prefix=f"olx_status_{response.status_code}")
             except Exception:
-                logger.exception("Unexpected error while fetching OLX search page", extra={"attempt": attempt})
+                logger.exception(
+                    "Unexpected error while fetching OLX search page",
+                    extra={"attempt": attempt},
+                )
 
             if attempt < settings.REQUEST_RETRIES:
                 time.sleep(settings.REQUEST_BACKOFF_SECONDS * (attempt + 1))

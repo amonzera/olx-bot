@@ -63,11 +63,29 @@ class OpportunityAnalyzer:
             reasons.append(f"Publicado ha mais de {alert_config.max_age_days} dias.")
 
         if listing.price_cents is not None:
-            target_price = alert_config.target_price_cents or alert_config.max_price_cents
-            if target_price is not None and listing.price_cents <= target_price:
-                flags.append(AnalysisFlag.GOOD_PRICE)
-                reasons.append("Preco esta dentro do alvo configurado.")
-                score += 40
+            below_min = (
+                alert_config.min_price_cents is not None
+                and listing.price_cents < alert_config.min_price_cents
+            )
+            above_max = (
+                alert_config.max_price_cents is not None
+                and listing.price_cents > alert_config.max_price_cents
+            )
+            if below_min:
+                reasons.append("Preco esta abaixo do minimo configurado para o alerta.")
+            elif above_max:
+                reasons.append("Preco esta acima do maximo configurado para o alerta.")
+            else:
+                target_price = alert_config.target_price_cents or alert_config.max_price_cents
+                has_price_rule = (
+                    alert_config.min_price_cents is not None
+                    or alert_config.max_price_cents is not None
+                    or target_price is not None
+                )
+                if has_price_rule and (target_price is None or listing.price_cents <= target_price):
+                    flags.append(AnalysisFlag.GOOD_PRICE)
+                    reasons.append("Preco esta dentro da faixa configurada.")
+                    score += 40
 
             if (
                 alert_config.min_expected_price_cents is not None
