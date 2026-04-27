@@ -111,9 +111,10 @@ Por padrão, o monitor busca até `MAX_SEARCH_PAGES=3` páginas por alerta e par
 
 ## Requisitos
 
-- Python 3.13 ou superior.
-- Docker e Docker Compose, se quiser rodar em container.
+- Docker e Docker Compose.
 - Um bot criado no Telegram via `@BotFather`.
+
+O projeto roda oficialmente pelo Docker. Não é necessário criar `.venv` local para usar o bot ou rodar os testes.
 
 ## Configuração do Bot no Telegram
 
@@ -219,28 +220,6 @@ Para parar:
 docker compose down
 ```
 
-## Rodando sem Docker
-
-Crie o ambiente virtual:
-
-```bash
-python -m venv .venv
-```
-
-Instale as dependências:
-
-```bash
-.venv/bin/pip install -r requirements.txt
-```
-
-Inicie o bot:
-
-```bash
-.venv/bin/python -m src.bot.app
-```
-
-Depois, abra o Telegram e envie `/start` para o bot.
-
 ## Banco de Dados
 
 O SQLite guarda:
@@ -279,7 +258,7 @@ Flags principais:
 Rode a suíte:
 
 ```bash
-.venv/bin/python -m pytest
+docker compose run --rm monitor pytest
 ```
 
 Os testes usam fixtures locais e não devem chamar a OLX.
